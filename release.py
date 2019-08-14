@@ -59,6 +59,7 @@ class Cirrus:
         variables = {
             'input': {
                 'taskId': task_id,
+                'clientMutationId': 'rerun-' + task_id,
             }
         }
 
