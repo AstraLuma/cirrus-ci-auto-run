@@ -60,7 +60,9 @@ class Cirrus:
 
         return (status, data)
 
-cirrus = Cirrus('config.json')
+
+repo_dir = Path(__file__).resolve().parent
+cirrus = Cirrus(repo_dir / 'config.json')
 
 
 for task in cirrus.config['tasks']:
