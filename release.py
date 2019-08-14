@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-from __future__ import absolute_import
 import json
 from logging import getLogger, INFO, StreamHandler
 from sys import stdout
 from pathlib import Path
+from pprint import pprint
 from urllib.request import urlopen, Request
 from pprint import pprint
 import random
@@ -16,9 +16,11 @@ logger.addHandler(StreamHandler(stdout))
 
 
 class Cirrus:
-    def __init__(self, config):
-        self.config = config
-        self.token = config['token']
+    def __init__(self, config_file):
+        with open(config_file) as f:
+            self.config = json.load(f)
+
+        self.token = self.config['token']
 
     def _graphql_query(self, query_name):
         data_dir = Path(__file__).resolve().parent
@@ -36,17 +38,11 @@ class Cirrus:
             'Authorization': 'Bearer ' + self.token,
         }
 
-        logger.info('=== REQUEST ===')
-        logger.info(data.decode())
-        logger.debug()
-
         request = Request('https://api.cirrus-ci.com/graphql', data=data, headers=headers)
         result = urlopen(request)
         text = result.read().decode()
         result_data = json.loads(text)
 
-        logger.info('=== RESPONSE ===')
-        logger.info(text)
         return (result.status, result_data)
 
     def latest_build(self, owner, name, branch):
@@ -66,6 +62,7 @@ class Cirrus:
         variables = {
             'input': {
                 'taskId': task_id,
+                'clientMutationId': 'rerun-' + task_id,
             }
         }
 
@@ -74,22 +71,30 @@ class Cirrus:
         return (status, data)
 
 
-with open('config.json', mode="r") as f:
-    config = json.load(f)
+repo_dir = Path(__file__).resolve().parent
+cirrus = Cirrus(repo_dir / 'config.json')
 
-cirrus = Cirrus(config)
+for task in cirrus.config['tasks']:
+    print('Running {} for {}'.format(task['task'], task['repo']), end='')
 
-
-for task in config['tasks']:
-    #logger.info(task)
     user, repo = task['repo'].split('/')
     branch = task['branch']
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
+    logger.info('.')
+
     task_id = cirrus.find_task(build, task_name)['id']
-    #logger.info('task_id={}'.format(task_id))
+    logger.info('.')
 
     status, data = cirrus.trigger_task(task_id)
-    #logger.info(status)
-    #pprint(data)
+    logger.info('. ')
+    if 'errors' in data:
+        logger.error('Failed')
+
+        for error in data['errors']:
+            logger.error(error['message'])
+            logger.error('\n')
+            pprint(data)
+    else:
+        logger.info('Done')

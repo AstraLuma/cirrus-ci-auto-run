@@ -28,4 +28,3 @@ fragment RepositoryBuildList_repository on Repository {
     }
   }
 }
-
