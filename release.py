@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 
+from __future__ import absolute_import
 import json
+from logging import getLogger, INFO, StreamHandler
+from sys import stdout
 from pathlib import Path
 from urllib.request import urlopen, Request
+from pprint import pprint
 import random
+
+
+logger = logging.getLogger()
+logger.setLevel(INFO)
+logger.addHandler(StreamHandler(stdout))
+
 
 class Cirrus:
     def __init__(self, config):
@@ -26,20 +36,17 @@ class Cirrus:
             'Authorization': 'Bearer ' + self.token,
         }
 
-        print('=== REQUEST ===')
-        print(data.decode())
-        print()
+        logger.info('=== REQUEST ===')
+        logger.info(data.decode())
+        logger.debug()
 
         request = Request('https://api.cirrus-ci.com/graphql', data=data, headers=headers)
         result = urlopen(request)
         text = result.read().decode()
         result_data = json.loads(text)
 
-        print('=== RESPONSE ===')
-        from pprint import pprint
-        print(text)
-        print()
-        print()
+        logger.info('=== RESPONSE ===')
+        logger.info(text)
         return (result.status, result_data)
 
     def latest_build(self, owner, name, branch):
@@ -67,26 +74,22 @@ class Cirrus:
         return (status, data)
 
 
-from pprint import pprint
-
-
-
-with open('config.json') as f:
+with open('config.json', mode="r") as f:
     config = json.load(f)
 
 cirrus = Cirrus(config)
 
 
 for task in config['tasks']:
-    #print(task)
+    #logger.info(task)
     user, repo = task['repo'].split('/')
     branch = task['branch']
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
     task_id = cirrus.find_task(build, task_name)['id']
-    #print('task_id={}'.format(task_id))
+    #logger.info('task_id={}'.format(task_id))
 
     status, data = cirrus.trigger_task(task_id)
-    #print(status)
+    #logger.info(status)
     #pprint(data)
