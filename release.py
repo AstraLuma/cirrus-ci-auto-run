@@ -21,16 +21,25 @@ class Cirrus:
         data = json.dumps({
             'query': query,
             'variables': variables,
-        }).encode('ascii')
+        }, indent=4).encode('ascii')
         headers = {
             'Authorization': 'Bearer ' + self.token,
         }
 
+        print('=== REQUEST ===')
+        print(data.decode())
+        print()
+
         request = Request('https://api.cirrus-ci.com/graphql', data=data, headers=headers)
         result = urlopen(request)
         text = result.read().decode()
-        print(text)
         result_data = json.loads(text)
+
+        print('=== RESPONSE ===')
+        from pprint import pprint
+        print(text)
+        print()
+        print()
         return (result.status, result_data)
 
     def latest_build(self, owner, name, branch):
@@ -69,15 +78,15 @@ cirrus = Cirrus(config)
 
 
 for task in config['tasks']:
-    print(task)
+    #print(task)
     user, repo = task['repo'].split('/')
     branch = task['branch']
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
     task_id = cirrus.find_task(build, task_name)['id']
-    print('task_id={}'.format(task_id))
+    #print('task_id={}'.format(task_id))
 
     status, data = cirrus.trigger_task(task_id)
-    print(status)
-    pprint(data)
+    #print(status)
+    #pprint(data)
