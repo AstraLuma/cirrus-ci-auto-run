@@ -1,0 +1,31 @@
+query GitHubRepositoryQuery(
+  $owner: String!
+  $name: String!
+  $branch: String
+) {
+  githubRepository(owner: $owner, name: $name) {
+    ...RepositoryBuildList_repository
+    id
+  }
+}
+
+fragment RepositoryBuildList_repository on Repository {
+  id
+  owner
+  name
+  masterBranch
+  builds(last: 1, branch: $branch) {
+    edges {
+      node {
+        id
+        status
+        tasks {
+            id
+            name
+            status
+        }
+      }
+    }
+  }
+}
+

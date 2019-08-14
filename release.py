@@ -1,14 +1,23 @@
 #!/usr/bin/env python3
 
 import json
+from pathlib import Path
 from urllib.request import urlopen, Request
 import random
 
 class Cirrus:
-    def __init__(self, token):
-        self.token = token
+    def __init__(self, config):
+        self.config = config
+        self.token = config['token']
 
-    def graphql(self, query, variables):
+    def _graphql_query(self, query_name):
+        data_dir = Path(__file__).resolve().parent
+        query_file = data_dir / 'graphql-queries' / '{}.graphql'.format(query_name)
+        return query_file.read_text()
+
+    def graphql(self, query_name, variables):
+        query = self._graphql_query(query_name)
+
         data = json.dumps({
             'query': query,
             'variables': variables,
@@ -24,63 +33,18 @@ class Cirrus:
         result_data = json.loads(text)
         return (result.status, result_data)
 
-    latest_build_query = """
-query GitHubRepositoryQuery(
-  $owner: String!
-  $name: String!
-  $branch: String
-) {
-  githubRepository(owner: $owner, name: $name) {
-    ...RepositoryBuildList_repository
-    id
-  }
-}
-
-fragment RepositoryBuildList_repository on Repository {
-  id
-  owner
-  name
-  masterBranch
-  builds(last: 1, branch: $branch) {
-    edges {
-      node {
-        id
-        status
-        tasks {
-            id
-            name
-            status
-        }
-      }
-    }
-  }
-}
-"""
-
     def latest_build(self, owner, name, branch):
         variables = {'owner': owner, 'name': name, 'branch': branch}
 
-        status, data = self.graphql(self.latest_build_query, variables)
+        status, data = self.graphql('latest-build', variables)
 
         builds = data['data']['githubRepository']['builds']['edges']
         last_build = builds[0]['node']
         return last_build
 
-
     def build_task(self, build, task_name):
         tasks = filter(lambda x: x['name'] == task_name, build['tasks'])
         return list(tasks)[0]
-
-
-    trigger_task_query = """
-mutation TaskDetailsTriggerMutation($input: TaskTriggerInput!) {
-  trigger(input: $input) {
-    task {
-      id
-    }
-  }
-}
-"""
 
     def trigger_task(self, task_id):
         variables = {
@@ -89,7 +53,7 @@ mutation TaskDetailsTriggerMutation($input: TaskTriggerInput!) {
             }
         }
 
-        status, data = self.graphql(self.trigger_task_query, variables)
+        status, data = self.graphql('trigger-task', variables)
 
         return (status, data)
 
@@ -100,9 +64,8 @@ from pprint import pprint
 
 with open('config.json') as f:
     config = json.load(f)
-token = config['token']
 
-cirrus = Cirrus(token)
+cirrus = Cirrus(config)
 
 build = cirrus.latest_build('duckinator', 'keress', 'test')
 task_id = cirrus.build_task(build, 'nightly')['id']
