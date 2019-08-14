@@ -42,7 +42,7 @@ class Cirrus:
         last_build = builds[0]['node']
         return last_build
 
-    def build_task(self, build, task_name):
+    def find_task(self, build, task_name):
         tasks = filter(lambda x: x['name'] == task_name, build['tasks'])
         return list(tasks)[0]
 
@@ -67,10 +67,17 @@ with open('config.json') as f:
 
 cirrus = Cirrus(config)
 
-build = cirrus.latest_build('duckinator', 'keress', 'test')
-task_id = cirrus.build_task(build, 'nightly')['id']
-print('task_id={}'.format(task_id))
 
-status, data = cirrus.trigger_task(task_id)
-print(status)
-pprint(data)
+for task in config['tasks']:
+    print(task)
+    user, repo = task['repo'].split('/')
+    branch = task['branch']
+    task_name = task['task']
+
+    build = cirrus.latest_build(user, repo, task['branch'])
+    task_id = cirrus.find_task(build, task_name)['id']
+    print('task_id={}'.format(task_id))
+
+    status, data = cirrus.trigger_task(task_id)
+    print(status)
+    pprint(data)

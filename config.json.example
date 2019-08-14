@@ -1,1 +1,10 @@
-{"token": "INSERT CIRRUS CI API TOKEN HERE"}
+{
+  "token": "INSERT CIRRUS CI API TOKEN HERE",
+  "tasks": [
+    {
+      "repo": "duckinator/keress",
+      "branch": "test",
+      "task": "nightly"
+    }
+  ]
+}
