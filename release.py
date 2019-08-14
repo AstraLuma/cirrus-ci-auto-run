@@ -2,13 +2,15 @@
 
 import json
 from pathlib import Path
+from pprint import pprint
 from urllib.request import urlopen, Request
-import random
 
 class Cirrus:
-    def __init__(self, config):
-        self.config = config
-        self.token = config['token']
+    def __init__(self, config_file):
+        with open(config_file) as f:
+            self.config = json.load(f)
+
+        self.token = self.config['token']
 
     def _graphql_query(self, query_name):
         data_dir = Path(__file__).resolve().parent
@@ -26,20 +28,11 @@ class Cirrus:
             'Authorization': 'Bearer ' + self.token,
         }
 
-        print('=== REQUEST ===')
-        print(data.decode())
-        print()
-
         request = Request('https://api.cirrus-ci.com/graphql', data=data, headers=headers)
         result = urlopen(request)
         text = result.read().decode()
         result_data = json.loads(text)
 
-        print('=== RESPONSE ===')
-        from pprint import pprint
-        print(text)
-        print()
-        print()
         return (result.status, result_data)
 
     def latest_build(self, owner, name, branch):
@@ -67,27 +60,32 @@ class Cirrus:
 
         return (status, data)
 
-
-from pprint import pprint
-
+cirrus = Cirrus('config.json')
 
 
-with open('config.json') as f:
-    config = json.load(f)
+for task in cirrus.config['tasks']:
+    print('Running {} for {}'.format(task['task'], task['repo']), end='')
 
-cirrus = Cirrus(config)
-
-
-for task in config['tasks']:
-    #print(task)
     user, repo = task['repo'].split('/')
     branch = task['branch']
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
+    print('.', end='', flush=True)
+
     task_id = cirrus.find_task(build, task_name)['id']
-    #print('task_id={}'.format(task_id))
+    print('.', end='', flush=True)
 
     status, data = cirrus.trigger_task(task_id)
-    #print(status)
-    #pprint(data)
+    print('. ', end='', flush=True)
+
+    if 'errors' in data:
+        print('Failed')
+        print()
+
+        for error in data['errors']:
+            print('{}'.format(error['message']))
+            print()
+            pprint(data)
+    else:
+        print('Done')
