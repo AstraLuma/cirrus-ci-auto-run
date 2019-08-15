@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 import json
-from logging import getLogger, INFO, StreamHandler
-from sys import stdout
+import logging
 from pathlib import Path
 from pprint import pprint
+from sys import stdout
 from urllib.request import urlopen, Request
-from pprint import pprint
-import random
 
 
 logger = logging.getLogger()
-logger.setLevel(INFO)
-logger.addHandler(StreamHandler(stdout))
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.StreamHandler(stdout))
 
 
 class Cirrus:
@@ -75,26 +73,18 @@ repo_dir = Path(__file__).resolve().parent
 cirrus = Cirrus(repo_dir / 'config.json')
 
 for task in cirrus.config['tasks']:
-    print('Running {} for {}'.format(task['task'], task['repo']), end='')
+    logger.info('Running {} task for {}.'.format(task['task'], task['repo']))
 
     user, repo = task['repo'].split('/')
     branch = task['branch']
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
-    logger.info('.')
-
     task_id = cirrus.find_task(build, task_name)['id']
-    logger.info('.')
 
     status, data = cirrus.trigger_task(task_id)
-    logger.info('. ')
     if 'errors' in data:
-        logger.error('Failed')
-
+        logger.info('')
         for error in data['errors']:
-            logger.error(error['message'])
-            logger.error('\n')
+            logger.error(error['message'] + '\n')
             pprint(data)
-    else:
-        logger.info('Done')
