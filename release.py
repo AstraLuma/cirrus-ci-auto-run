@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 
 import json
+from logging import getLogger, INFO, StreamHandler
+from sys import stdout
 from pathlib import Path
 from pprint import pprint
 from urllib.request import urlopen, Request
+from pprint import pprint
+import random
+
+
+logger = logging.getLogger()
+logger.setLevel(INFO)
+logger.addHandler(StreamHandler(stdout))
+
 
 class Cirrus:
     def __init__(self, config_file):
@@ -64,7 +74,6 @@ class Cirrus:
 repo_dir = Path(__file__).resolve().parent
 cirrus = Cirrus(repo_dir / 'config.json')
 
-
 for task in cirrus.config['tasks']:
     print('Running {} for {}'.format(task['task'], task['repo']), end='')
 
@@ -73,21 +82,19 @@ for task in cirrus.config['tasks']:
     task_name = task['task']
 
     build = cirrus.latest_build(user, repo, task['branch'])
-    print('.', end='', flush=True)
+    logger.info('.')
 
     task_id = cirrus.find_task(build, task_name)['id']
-    print('.', end='', flush=True)
+    logger.info('.')
 
     status, data = cirrus.trigger_task(task_id)
-    print('. ', end='', flush=True)
-
+    logger.info('. ')
     if 'errors' in data:
-        print('Failed')
-        print()
+        logger.error('Failed')
 
         for error in data['errors']:
-            print('{}'.format(error['message']))
-            print()
+            logger.error(error['message'])
+            logger.error('\n')
             pprint(data)
     else:
-        print('Done')
+        logger.info('Done')
