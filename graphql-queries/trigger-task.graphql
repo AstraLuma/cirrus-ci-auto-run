@@ -1,7 +1,0 @@
-mutation TaskDetailsTriggerMutation($input: TaskTriggerInput!) {
-  trigger(input: $input) {
-    task {
-      id
-    }
-  }
-}
